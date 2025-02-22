@@ -9,8 +9,6 @@ def call_openai(prompt: str) -> dict:
     """
     Calls the OpenAI API using the provided prompt.
     """
-    logger.info(str(prompt))
-    logger.info(str(settings.OPENAI_API_KEY))
     url = f"https://api.openai.com/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
