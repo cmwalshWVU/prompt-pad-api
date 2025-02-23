@@ -3,6 +3,10 @@ from pydantic import BaseModel
 import uuid
 from app.supabase_client import supabase_admin
 from app.dependencies import get_current_user
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -24,18 +28,20 @@ class UpdateProfileRequest(BaseModel):
 
 @router.post("/signin")
 def sign_in(data: SignInRequest):
-    """
-    Sign in a user using email and password.
-    This endpoint is public since it creates a session.
-    """
+    # Call the Supabase admin client's sign-in method
     response = supabase_admin.auth.sign_in_with_password({
         "email": data.email,
         "password": data.password
     })
-    if response.get("error"):
-        raise HTTPException(status_code=400, detail=response["error"].get("message", "Sign in failed"))
-    # The response should include a token and user details
-    return response
+    
+    # Check if the sign in was successful by verifying if 'user' is present.
+    if not response.user:
+        # You might also check 'session' if that's your preferred indicator.
+        raise HTTPException(status_code=400, detail="Sign in failed: Invalid credentials or no user returned")
+    
+    # Return the response as a dictionary
+    return response.dict()
+
 
 @router.post("/signup")
 def sign_up(data: SignUpRequest):
@@ -59,35 +65,34 @@ def get_user(user: dict = Depends(get_current_user)):
     Retrieve the current user's information and profile.
     The `user` is injected by the `get_current_user` dependency.
     """
+    logger.info(user)
     profile_resp = (
         supabase_admin
         .from_("user_profiles")
         .select("*")
-        .eq("id", user["id"])
+        .eq("id", user["sub"])
         .single()
         .execute()
     )
-    if profile_resp.error:
+
+    logger.info(profile_resp)
+    if not profile_resp.data:
         raise HTTPException(status_code=400, detail=profile_resp.error.message)
     return {"user": user, "profile": profile_resp.data}
 
 @router.patch("/user")
 def update_profile(updates: UpdateProfileRequest, user: dict = Depends(get_current_user)):
-    """
-    Update the current user's profile.
-    """
     update_data = updates.dict(exclude_unset=True)
     profile_resp = (
         supabase_admin
         .from_("user_profiles")
         .update(update_data)
-        .eq("id", user["id"])
-        .select()
-        .single()
+        .eq("id", user["sub"])
         .execute()
     )
-    if profile_resp.error:
-        raise HTTPException(status_code=400, detail=profile_resp.error.message)
+    # Check if the update returned data; if not, consider it a failure.
+    if not profile_resp.data:
+        raise HTTPException(status_code=400, detail="Profile update failed.")
     return profile_resp.data
 
 @router.post("/user/avatar")
@@ -116,7 +121,7 @@ async def upload_avatar(file: UploadFile = File(...), user: dict = Depends(get_c
         supabase_admin
         .from_("user_profiles")
         .update({"avatar_url": public_url})
-        .eq("id", user["id"])
+        .eq("id", user["sub"])
         .select()
         .single()
         .execute()
