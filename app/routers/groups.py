@@ -302,14 +302,15 @@ def cancel_invite(invite_id: str, user: dict = Depends(get_current_user)):
         .delete() \
         .eq("id", invite_id) \
         .execute()
-    if not delete_resp.data:
+    if hasattr(delete_resp, "data"):
         raise HTTPException(status_code=400, detail=delete_resp.error.message)
     return {"detail": "Invite canceled successfully"}
 
 @router.post("/invites/{invite_id}/accept")
 def accept_invite(invite_id: str, user: dict = Depends(get_current_user)):
     resp = supabase_admin.rpc("accept_group_invite", {"invite_id": invite_id})
-    if resp.error:
+
+    if hasattr(resp, "error"):
         raise HTTPException(status_code=400, detail=resp.error.message)
     # Optionally refresh groups after accepting the invite.
     return {"detail": "Invite accepted successfully"}
@@ -320,6 +321,6 @@ def decline_invite(invite_id: str, user: dict = Depends(get_current_user)):
         .update({"status": "declined"}) \
         .eq("id", invite_id) \
         .execute()
-    if not update_resp.data:
+    if hasattr(update_resp, "error"):
         raise HTTPException(status_code=400, detail=update_resp.error.message)
     return {"detail": "Invite declined successfully"}
