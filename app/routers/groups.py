@@ -264,26 +264,36 @@ def fetch_invites(user: dict = Depends(get_current_user)):
         .eq("status", "pending") \
         .order("created_at") \
         .execute()
-    if not resp.data:
+    if hasattr(resp, "data"):
         raise HTTPException(status_code=400, detail=resp.error.message)
     return resp.data or []
 
 class InviteMemberRequest(BaseModel):
     email: str
 
-@router.post("/{group_id}/invites")
-def invite_member(group_id: str, request: InviteMemberRequest, user: dict = Depends(get_current_user)):
-    insert_resp = supabase_admin.from_("group_invites") \
-        .insert([{
+@router.post("/{group_id}/invites", response_model=dict)
+def invite_member(
+    group_id: str,
+    request: InviteMemberRequest,
+    user: dict = Depends(get_current_user)
+):
+    insert_resp = supabase_admin.from_("group_invites").insert(
+        [{
             "group_id": group_id,
             "email": request.email,
-            "invited_by": user["sub"]
-        }]) \
-        .select() \
-        .single() \
-        .execute()
-    if not insert_resp.data:
+            "invited_by": user["id"]
+        }],
+        returning="representation"  # Request the inserted record to be returned.
+    ).execute()
+
+    if hasattr(insert_resp, "error"):
         raise HTTPException(status_code=400, detail=insert_resp.error.message)
+
+    # If data is returned as a list, return the first element.
+    if isinstance(insert_resp.data, list) and len(insert_resp.data) > 0:
+        return insert_resp.data[0]
+
+    # Fallback: return the raw data.
     return insert_resp.data
 
 @router.delete("/invites/{invite_id}")
