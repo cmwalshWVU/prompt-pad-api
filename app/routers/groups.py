@@ -264,7 +264,7 @@ def fetch_invites(user: dict = Depends(get_current_user)):
         .eq("status", "pending") \
         .order("created_at") \
         .execute()
-    if hasattr(resp, "data"):
+    if hasattr(resp, "error"):
         raise HTTPException(status_code=400, detail=resp.error.message)
     return resp.data or []
 
