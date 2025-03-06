@@ -281,7 +281,7 @@ def invite_member(
         [{
             "group_id": group_id,
             "email": request.email,
-            "invited_by": user["id"]
+            "invited_by": user["sub"]
         }],
         returning="representation"  # Request the inserted record to be returned.
     ).execute()
