@@ -262,7 +262,7 @@ def fetch_invites(user: dict = Depends(get_current_user)):
         .select("*") \
         .eq("email", user["email"]) \
         .eq("status", "pending") \
-        .order("created_at", {"ascending": False}) \
+        .order("created_at") \
         .execute()
     if not resp.data:
         raise HTTPException(status_code=400, detail=resp.error.message)
