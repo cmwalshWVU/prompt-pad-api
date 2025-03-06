@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import health, hello, openai_api, auth, groups
+from app.routers import health, hello, openai_api, auth, groups, prompts
 
 app = FastAPI(title="FastAPI with Supabase and OpenAI")
 
@@ -19,5 +19,6 @@ app.include_router(hello.router)
 app.include_router(openai_api.router)
 app.include_router(groups.router)
 app.include_router(auth.router)
+app.include_router(prompts.router)
 
 # For local development, run with: uvicorn app.main:app --reload
